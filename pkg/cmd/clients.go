@@ -1,3 +1,17 @@
+// Copyright Red Hat, Inc., and individual contributors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cmd
 
 import (
@@ -31,12 +45,16 @@ func (cc *ClientCmd) ListClientsCmd() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "clients",
 		Short: "gets a list of mobile clients represented in the namespace",
-		Long: `Example: mobile get clients
-mobile --namespace=myproject get clients
-kubectl plugin mobile get clients
-oc plugin mobile get clients`,
+		Long:  `get clients allows you to get a list of mobile clients that are represented in your namespace.`,
+		Example: `  mobile get clients --namespace=myproject 
+  kubectl plugin mobile get clients
+  oc plugin mobile get clients`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			apps, err := cc.mobileClient.MobileV1alpha1().MobileClients(currentNamespace(cmd.Flags())).List(metav1.ListOptions{})
+			ns, err := currentNamespace(cmd.Flags())
+			if err != nil {
+				return errors.Wrap(err, "failed to get namespace")
+			}
+			apps, err := cc.mobileClient.MobileV1alpha1().MobileClients(ns).List(metav1.ListOptions{})
 			if err != nil {
 				return errors.Wrap(err, "failed to list mobile clients")
 			}
@@ -67,16 +85,21 @@ func (cc *ClientCmd) GetClientCmd() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "client <clientID>",
 		Short: "gets a single mobile client in the namespace",
-		Long: `Example: mobile --namespace=myproject get client <clientID>
-kubectl plugin mobile get client <clientID>
-oc plugin mobile get client <clientID>`,
+		Long: `get client allows you to view client information for a specific mobile client in your namespace.
+Run the "mobile get clients" command from this tool to get the client ID.`,
+		Example: `  mobile get client <clientID> --namespace=myproject 
+  kubectl plugin mobile get client <clientID>
+  oc plugin mobile get client <clientID>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println(args, len(args))
 			if len(args) != 1 {
 				return errors.New("missing argument <clientID>")
 			}
 			clientID := args[0]
-			client, err := cc.mobileClient.MobileV1alpha1().MobileClients(currentNamespace(cmd.Flags())).Get(clientID, metav1.GetOptions{})
+			ns, err := currentNamespace(cmd.Flags())
+			if err != nil {
+				return errors.Wrap(err, "failed to get namespace")
+			}
+			client, err := cc.mobileClient.MobileV1alpha1().MobileClients(ns).Get(clientID, metav1.GetOptions{})
 			if err != nil {
 				return errors.Wrap(err, "failed to get mobile client with clientID "+clientID)
 			}
@@ -105,15 +128,12 @@ func (cc *ClientCmd) CreateClientCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "client <name> <clientType iOS|cordova|android>",
 		Short: "create a mobile client representation in your namespace",
-		Long: `Sets up the representation of a mobile application of the specified type in your namespace.
+		Long: `create client sets up the representation of a mobile application of the specified type in your namespace.
 This is used to provide a mobile client context for various actions such as creating, starting or stopping mobile client builds.
-
-The available client types are android, cordova and iOS. 
-
-When used standalone, a namespace must be specified by providing the --namespace flag.`,
-		Example: `  mobile create client <name> <clientType> --namespace=myproject 
-  kubectl plugin mobile create client <name> <clientType>
-  oc plugin mobile create client <name> <clientType>`,
+The available client types are android, cordova and iOS.`,
+		Example: `  mobile get client <name> <clientType> --namespace=myproject 
+  kubectl plugin mobile get client <name> <clientType>
+  oc plugin mobile get client <name> <clientType>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 2 {
 				return errors.New("expected a name and a clientType")
@@ -121,7 +141,11 @@ When used standalone, a namespace must be specified by providing the --namespace
 			name := args[0]
 			clientType := args[1]
 			appKey := uuid.NewV4().String()
-			namespace := currentNamespace(cmd.Flags())
+
+			namespace, err := currentNamespace(cmd.Flags())
+			if err != nil {
+				return errors.Wrap(err, "failed to get namespace")
+			}
 			app := &v1alpha1.MobileClient{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "MobileClient",
@@ -178,15 +202,26 @@ func (cc *ClientCmd) DeleteClientCmd() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "client <clientID>",
 		Short: "deletes a single mobile client in the namespace",
-		Long: `Example: mobile --namespace=myproject delete client <clientID>
-kubectl plugin mobile delete client <clientID>
-oc plugin mobile delete client <clientID>`,
+		Long: `delete client allows you to delete a single mobile client in your namespace.
+Run the "mobile get clients" command from this tool to get the client ID.`,
+		Example: `  mobile delete client <clientID> --namespace=myproject 
+  kubectl plugin mobile delete client <clientID>
+  oc plugin mobile delete client <clientID>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			var ns string
+
 			if len(args) != 1 {
 				return errors.New("expected a clientID argument to be passed " + cmd.Use)
 			}
 			clientID := args[0]
-			err := cc.mobileClient.MobileV1alpha1().MobileClients(currentNamespace(cmd.Flags())).Delete(clientID, &metav1.DeleteOptions{})
+
+			ns, err = currentNamespace(cmd.Flags())
+			if err != nil {
+				return errors.Wrap(err, "failed to get namespace")
+			}
+
+			err = cc.mobileClient.MobileV1alpha1().MobileClients(ns).Delete(clientID, &metav1.DeleteOptions{})
 			if err != nil {
 				return errors.Wrap(err, "failed to get mobile client with clientID "+clientID)
 			}

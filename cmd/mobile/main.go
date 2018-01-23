@@ -1,4 +1,4 @@
-// Copyright © 2017 NAME HERE <EMAIL ADDRESS>
+// Copyright Red Hat, Inc., and individual contributors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,15 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"path/filepath"
+
+	"log"
 
 	m "github.com/aerogear/mobile-cli/pkg/client/mobile/clientset/versioned"
 	sc "github.com/aerogear/mobile-cli/pkg/client/servicecatalog/clientset/versioned"
@@ -55,7 +58,6 @@ func main() {
 		createCmd.AddCommand(serviceConfigCmd.CreateServiceConfigCmd())
 		createCmd.AddCommand(clientBuilds.CreateClientBuildsCmd())
 		rootCmd.AddCommand(createCmd)
-
 	}
 	//get
 	{
@@ -99,15 +101,21 @@ func main() {
 	}
 
 	if err := rootCmd.Execute(); err != nil {
-
+		// as using pkg/errors lets allow the full stack to be seen if needed
+		if os.Getenv("MCP_DEBUG") == "true" {
+			log.Fatalf("error: %+v", err)
+		}
 		os.Exit(1)
 	}
 }
 
+// NewClientsOrDie creates a new set of clients for Kubernetes, Service Catalog and Mobile Services
+// if any of these clients fails to create then the process wil die.
 func NewClientsOrDie(configLoc string) (kubernetes.Interface, m.Interface, sc.Interface) {
 	config, err := clientcmd.BuildConfigFromFlags("", configLoc)
 	if err != nil {
-		panic(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 
 	// create the K8client
