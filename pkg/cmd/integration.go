@@ -108,10 +108,10 @@ func (bc *IntegrationCmd) CreateIntegrationCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "integration <consuming_service_instance_id> <providing_service_instance_id>",
 		Short: "integrate certain mobile services together",
-		Long: `example usage: kubectl plugin mobile create integration <consuming_service_instance_id> <providing_service_instance_id>
-mobile --namespace=myproject create integration <consuming_service_instance_id> <providing_service_instance_id>
-oc plugin mobile create integration <consuming_service_instance_id> <providing_service_instance_id>
-	`,
+		Long:  `create integration allows you to create a binding between mobile services in your namespace.`,
+		Example: `  mobile create integration <consuming_service_instance_id> <providing_service_instance_id> --namespace=myproject
+  kubectl plugin mobile create integration <consuming_service_instance_id> <providing_service_instance_id>
+  oc plugin mobile create integration <consuming_service_instance_id> <providing_service_instance_id>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 2 {
 				return cmd.Usage()
